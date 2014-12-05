@@ -1,7 +1,7 @@
 #! /bin/sh
 
-riak-admin bucket-type create journal '{"props": {}}'
-riak-admin bucket-type activate journal
-riak-admin bucket-type create journal-seqnrs '{"props":{"datatype":"set"}}'
-riak-admin bucket-type activate journal-seqnrs 
+sudo riak-admin bucket-type create journal '{"props": {}}'
+sudo riak-admin bucket-type activate journal
+sudo riak-admin bucket-type create journal-seqnrs '{"props":{"datatype":"set"}}'
+sudo riak-admin bucket-type activate journal-seqnrs 
 

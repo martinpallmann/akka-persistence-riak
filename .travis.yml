@@ -7,5 +7,5 @@ jdk:
   - oraclejdk7
 services:
   - riak
-before_script: ./riak-setup-sh
+before_script: ./riak-setup.sh
 

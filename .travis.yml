@@ -1,0 +1,11 @@
+language: scala
+scala:
+   - 2.10.4
+   - 2.11.4
+jdk:
+  - oraclejdk8
+  - oraclejdk7
+services:
+  - riak
+before_script: ./riak-setup-sh
+

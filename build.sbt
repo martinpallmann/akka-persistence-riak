@@ -12,7 +12,7 @@ crossScalaVersions := Seq("2.10.4", "2.11.4")
 
 libraryDependencies ++= {
   def akka(artifactId: String) = { "com.typesafe.akka" %% artifactId % "2.3.7" }
-  def riak(artifactId: String) = { "com.basho.riak"    %  artifactId % "2.0.2" }
+  def riak(artifactId: String) = { "com.basho.riak"    %  artifactId % "2.0.0" }
   def test(moduleId: ModuleID) = { moduleId % "test" }
   (Seq("akka-actor", "akka-persistence-experimental") map akka) ++
   (Seq("riak-client") map riak) ++

@@ -1,13 +1,12 @@
 language: scala
 scala:
-   - 2.10.4
    - 2.11.5
 jdk:
   - oraclejdk7
 services:
   - riak
 before_script:
-  - sudo riak-admin status
+  - sudo riak-admin status | grep riak_kv_version
   - sudo riak-admin bucket-type activate journal
   - sudo riak-admin bucket-type activate journal-seqnrs
 

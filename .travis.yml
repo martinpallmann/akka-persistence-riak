@@ -7,6 +7,7 @@ jdk:
 services:
   - riak
 before_script:
+  - sudo riak-admin status
   - sudo riak-admin bucket-type activate journal
   - sudo riak-admin bucket-type activate journal-seqnrs
 

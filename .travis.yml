@@ -7,5 +7,5 @@ jdk:
 services:
   - riak
 before_script:
-  - ./bin/setup-riak.sh
+  - sudo ./bin/setup-riak.sh
 

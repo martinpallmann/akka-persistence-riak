@@ -4,7 +4,7 @@ import com.basho.riak.client.core.{ RiakCluster => JRiakCluster }
 import com.basho.riak.client.core.RiakCluster.{ Builder => JBuilder }
 import scala.collection.JavaConverters._
 
-class RiakCluster(val cluster: JRiakCluster) {
+class RiakCluster(private[client] val cluster: JRiakCluster) {
   def start(): Unit = cluster.start()
   def shutdown(): Unit = cluster.shutdown()
 }
@@ -20,5 +20,4 @@ object RiakCluster {
   object Builder {
     def apply(nodes: List[RiakNode]) = new Builder(new JBuilder(nodes.map(_.node).asJava))
   }
-
 }

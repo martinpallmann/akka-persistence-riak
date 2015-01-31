@@ -1,11 +1,10 @@
 package akka.persistence.riak.client.core
+
 import com.basho.riak.client.core.RiakNode.{ Builder => JBuilder }
 import com.basho.riak.client.core.{ RiakNode => JRiakNode }
 import scala.collection.JavaConverters._
 
-class RiakNode(val node: JRiakNode) {
-
-}
+class RiakNode(val node: JRiakNode)
 
 object RiakNode {
 
@@ -33,3 +32,4 @@ object RiakNode {
     def apply() = new Builder(new JBuilder())
   }
 }
+

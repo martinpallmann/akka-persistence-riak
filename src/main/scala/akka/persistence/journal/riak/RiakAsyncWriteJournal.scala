@@ -39,14 +39,14 @@ class RiakAsyncWriteJournal extends AsyncWriteJournal with ActorLogging {
   override def asyncDeleteMessagesTo(persistenceId: String, toSequenceNr: Long, permanent: Boolean): Future[Unit] = {
     val pId = PersistId(persistenceId)
 
-    def delete(sNrs: Seq[SeqNr]) = Future.sequence {
-      sNrs map (sNr => riak delete (pId, sNr, permanent))
-    }
-
     for {
       sNrs <- riak fetchSequenceNrs (pId, _ <= SeqNr(toSequenceNr))
-      _ <- delete(sNrs)
+      _ <- delete(pId, sNrs, permanent)
     } yield ()
+  }
+
+  private def delete(pId: PersistId, sNrs: Seq[SeqNr], permanent: Boolean) = Future.sequence {
+    sNrs map (sNr => riak delete (pId, sNr, permanent))
   }
 
   /**
@@ -98,10 +98,11 @@ class RiakAsyncWriteJournal extends AsyncWriteJournal with ActorLogging {
   import akka.persistence.{ PersistentConfirmation, PersistentId }
 
   @deprecated("writeConfirmations will be removed, since Channels will be removed.", since = "0.1")
-  override def asyncWriteConfirmations(confirmations: Seq[PersistentConfirmation]): Future[Unit] = Future(Unit)
+  override def asyncWriteConfirmations(confirmations: Seq[PersistentConfirmation]): Future[Unit] =
+    riak writeConfirmations confirmations
 
   @deprecated("asyncDeleteMessages will be removed.", since = "0.1")
   override def asyncDeleteMessages(messageIds: Seq[PersistentId], permanent: Boolean): Future[Unit] = Future.sequence {
-    messageIds.map(mId => asyncDeleteMessagesTo(mId.persistenceId, Long.MaxValue, permanent))
+    messageIds.map(mId => { delete(PersistId(mId.persistenceId), Seq(SeqNr(mId.sequenceNr)), permanent) })
   }.map(_ => ())
 }

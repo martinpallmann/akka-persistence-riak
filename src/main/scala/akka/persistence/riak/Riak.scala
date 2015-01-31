@@ -1,7 +1,8 @@
 package akka.persistence.riak
 
-import akka.persistence.PersistentRepr
-import akka.persistence.riak.client.api.RiakClient.MapActions
+import akka.actor.FSM.->
+import akka.persistence.{ PersistentConfirmation, PersistentRepr }
+import akka.persistence.riak.client.api.RiakClient.{ SetActions, MapActions }
 import akka.persistence.riak.client.api.RiakClient.SetActions.Add
 import akka.persistence.riak.client.core.{ RiakCluster, RiakNode }
 import akka.persistence.riak.client.api.RiakClient
@@ -18,7 +19,6 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 
 case class Riak(addresses: List[String], minConnections: Int, maxConnections: Int) {
-
   private lazy val cluster = {
     val nodes = RiakNode.Builder()
       .withMinConnections(minConnections)
@@ -86,6 +86,18 @@ case class Riak(addresses: List[String], minConnections: Int, maxConnections: In
       }
     }
 
+  @deprecated("writeConfirmations will be removed, since Channels will be removed.", since = "0.1")
+  def writeConfirmations(confirmations: Seq[PersistentConfirmation])(implicit ec: ExecutionContext, bucketType: JournalBucketType): Future[Unit] = Future.sequence {
+    confirmations
+      .groupBy(c => Location(PersistId(c.persistenceId), SeqNr(c.sequenceNr)))
+      .map {
+        case (loc, cs) =>
+          client updateMap loc -> Seq(
+            MapActions.UpdateSet("confirmations", cs.map(c => SetActions.Add(BinaryValue createFromUtf8 c.channelId)))
+          )
+      }
+  }.map(_ => ())
+
   private def serialize(p: PersistentRepr)(implicit ser: Serialization): BinaryValue =
     BinaryValue create ser.serializerFor(classOf[PersistentRepr]).toBinary(p)
 
@@ -102,17 +114,18 @@ case class Riak(addresses: List[String], minConnections: Int, maxConnections: In
       result <- Option(value.getValue)
     } yield serialization.serializerFor(classOf[PersistentRepr]).fromBinary(result).asInstanceOf[PersistentRepr]
 
-    val conf = for {
-      d <- data
-      a <- Try(d.)
-    }
-
     val del = for {
       d <- data
       value <- Try(d.getFlag(BinaryValue createFromUtf8 "deleted")).toOption
     } yield value.getEnabled
 
-    payload.map(_.update(deleted = del.getOrElse(false)))
+    val confirmations = for {
+      d <- data.toList
+      value <- Try(d.getSet("confirmations")).toOption.toList
+      res <- value.view().asScala.map(_.toStringUtf8).toList
+    } yield res
+
+    payload.map(_.update(deleted = del.getOrElse(false)).update(confirms = confirmations))
   }
 
   private object RiakObject {

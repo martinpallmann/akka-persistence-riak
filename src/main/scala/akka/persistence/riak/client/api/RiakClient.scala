@@ -1,7 +1,5 @@
 package akka.persistence.riak.client.api
 
-import java.security.Key
-
 import akka.persistence.riak.Implicits._
 import akka.persistence.riak.client.api.RiakClient._
 import akka.persistence.riak.client.core.RiakCluster

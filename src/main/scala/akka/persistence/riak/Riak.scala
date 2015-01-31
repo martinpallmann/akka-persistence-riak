@@ -1,6 +1,5 @@
 package akka.persistence.riak
 
-import akka.actor.FSM.->
 import akka.persistence.{ PersistentConfirmation, PersistentRepr }
 import akka.persistence.riak.client.api.RiakClient.{ SetActions, MapActions }
 import akka.persistence.riak.client.api.RiakClient.SetActions.Add
@@ -10,8 +9,6 @@ import akka.persistence.riak.Implicits._
 import akka.serialization.Serialization
 import com.basho.riak.client.api.commands.datatypes.FetchMap
 import com.basho.riak.client.api.commands.datatypes.UpdateSet.Response
-import com.basho.riak.client.core.query.crdt.types.RiakMap
-import com.basho.riak.client.core.query.{ RiakObject => JRiakObject }
 import com.basho.riak.client.core.util.BinaryValue
 import scala.collection.immutable.{ Iterable, Seq }
 import scala.concurrent.{ ExecutionContext, Future }
@@ -126,9 +123,5 @@ case class Riak(addresses: List[String], minConnections: Int, maxConnections: In
     } yield res
 
     payload.map(_.update(deleted = del.getOrElse(false)).update(confirms = confirmations))
-  }
-
-  private object RiakObject {
-    def apply(data: Array[Byte]): JRiakObject = new JRiakObject() setValue (BinaryValue create data)
   }
 }

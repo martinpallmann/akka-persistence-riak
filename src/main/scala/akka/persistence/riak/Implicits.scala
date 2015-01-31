@@ -4,8 +4,7 @@ import com.basho.riak.client.core.{ RiakFutureListener, RiakFuture }
 import com.typesafe.config.{ ConfigException, Config }
 import scala.collection.IterableLike
 import scala.concurrent.{ ExecutionContext, Promise, Future }
-import scala.util.{ Failure, Try }
-import scala.collection.JavaConverters._
+import scala.util.Try
 
 object Implicits {
 

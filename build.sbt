@@ -2,7 +2,7 @@ import scalariform.formatter.preferences._
 
 organization := "com.github.martinpallmann"
 name := "akka-persistence-riak"
-version := "0.1-SNAPSHOT"
+version := "0.0.0"
 scalaVersion := "2.11.5"
 crossScalaVersions := Seq("2.10.4", "2.11.5")
 val akkaVersion = "2.3.9"

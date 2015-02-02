@@ -14,10 +14,11 @@ Journal plugin
 
 ### Activation 
 
-To activate the journal plugin, add the following line to `application.conf`:
+To activate the journal plugin, add the following lines to `application.conf`:
 
     akka.persistence.journal.plugin = "akka-persistence-riak-async.journal"
+    akka-persistence-riak-async.journal.class = "docs.persistence.MyJournal"
 
 You also need to configure the riak hosts:
 
-    akka-persistence-riak-async.journal.nodes = ["127.0.0.1"]
+    akka-persistence-riak-async.nodes = ["127.0.0.1"]

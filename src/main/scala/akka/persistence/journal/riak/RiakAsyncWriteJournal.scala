@@ -13,10 +13,10 @@ import scala.collection.JavaConverters._
 
 class RiakAsyncWriteJournal extends AsyncWriteJournal with ActorLogging {
 
-  private val root = "akka-persistence-riak-async.journal"
+  private val root = "akka-persistence-riak-async"
   private lazy val config = context.system.settings.config
   implicit lazy val serialization = SerializationExtension(context.system)
-  implicit lazy val bucketType: JournalBucketType = JournalBucketType(config getString (s"$root.bucketType", "journal"))
+  implicit lazy val bucketType: JournalBucketType = JournalBucketType(config getString (s"$root.journal.bucket-type", "journal"))
 
   private lazy val nodes = (config getStringList s"$root.nodes").asScala.toList
   private lazy val riak: Riak = Riak(nodes, 1, 50)

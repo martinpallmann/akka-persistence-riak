@@ -3,11 +3,11 @@ import scalariform.formatter.preferences._
 organization := "com.github.martinpallmann"
 name := "akka-persistence-riak"
 version := "0.0.0"
-scalaVersion := "2.11.5"
-crossScalaVersions := Seq("2.10.4", "2.11.5")
+scalaVersion := "2.11.6"
+crossScalaVersions := Seq("2.10.4", "2.11.6")
 val akkaVersion = "2.3.9"
-val riakVersion = "2.0.0"
-val slf4jVersion = "1.7.7"
+val riakVersion = "2.0.1"
+val slf4jVersion = "1.7.12"
 
 libraryDependencies ++= {
   def akka(artifactId: String) = { "com.typesafe.akka" %% s"akka-$artifactId" % akkaVersion }

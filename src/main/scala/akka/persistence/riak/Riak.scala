@@ -31,10 +31,9 @@ case class Riak(addresses: List[String], minConnections: Int, maxConnections: In
 
   def shutdown() = cluster.shutdown()
 
-  def delete(pId: PersistId, sNr: SeqNr, permanent: Boolean)(implicit ec: ExecutionContext, bucketType: JournalBucketType): Future[Unit] = permanent match {
-
-    case true  => client deleteValue Location(pId, sNr)
-    case false => client updateMap (Location(pId, sNr) -> Seq(MapActions.UpdateFlag("deleted", flag = true)))
+  def delete(pId: PersistId, sNr: SeqNr, m: DeleteMode)(implicit ec: ExecutionContext, bucketType: JournalBucketType): Future[Unit] = m match {
+    case Permanent => client deleteValue Location(pId, sNr)
+    case Temporary => client updateMap (Location(pId, sNr) -> Seq(MapActions.UpdateFlag("deleted", flag = true)))
   }
 
   def storeMessages(messages: Iterable[PersistentRepr])(implicit ec: ExecutionContext, ser: Serialization, bucketType: JournalBucketType): Future[Iterable[(PersistId, SeqNr)]] = Future.sequence {

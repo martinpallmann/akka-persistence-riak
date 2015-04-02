@@ -25,6 +25,10 @@ package object riak {
     def toBinaryValue = BinaryValue createFromUtf8 value
   }
 
+  sealed trait DeleteMode
+  case object Permanent extends DeleteMode
+  case object Temporary extends DeleteMode
+
   val alwaysTrue: (Any => Boolean) = _ => true
 
   object Location {

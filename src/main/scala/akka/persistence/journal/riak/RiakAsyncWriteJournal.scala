@@ -2,13 +2,17 @@ package akka.persistence.journal.riak
 
 import akka.actor.ActorLogging
 import akka.serialization.SerializationExtension
+import scala.collection.immutable
 import scala.concurrent.Future
 import scala.collection.immutable.Seq
-import akka.persistence.PersistentRepr
+import akka.persistence.{ AtomicWrite, PersistentRepr }
 import akka.persistence.journal.AsyncWriteJournal
 import akka.persistence.riak._
 import akka.persistence.riak.Implicits._
-import scala.concurrent.ExecutionContext.Implicits.global // TODO make available on outside
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{ Success, Try }
+
+// TODO make available on outside
 import scala.collection.JavaConverters._
 
 class RiakAsyncWriteJournal extends AsyncWriteJournal with ActorLogging {
@@ -23,34 +27,37 @@ class RiakAsyncWriteJournal extends AsyncWriteJournal with ActorLogging {
 
   context.system.registerOnTermination(riak shutdown ())
 
-  /**
-   * asynchronously writes a batch of persistent messages to the riak journal.
-   */
-  override def asyncWriteMessages(messages: Seq[PersistentRepr]): Future[Unit] = for {
-    seqNrs <- riak storeMessages messages
-    res <- riak storeSeqNrs seqNrs // TODO make the write atomic
-  } yield ()
+  override def asyncWriteMessages(messages: immutable.Seq[AtomicWrite]): Future[immutable.Seq[Try[Unit]]] =
+    Future.sequence {
+      messages.map(asyncWriteMessage)
+    }
+
+  // TODO return Try instead of Success
+  def asyncWriteMessage(message: AtomicWrite): Future[Try[Unit]] = for {
+    seqNrs <- riak storeMessages message.payload
+    res <- riak storeSeqNrs seqNrs
+  } yield Success(Unit)
 
   /**
    * asynchronously deletes all persistent messages up to `toSequenceNr` (inclusive)
    * from the riak journal. If `permanent` is set to `false`, the persistent messages are marked
    * as deleted, otherwise they are permanently deleted.
    */
-  override def asyncDeleteMessagesTo(persistenceId: String, toSequenceNr: Long, permanent: Boolean): Future[Unit] = {
+  override def asyncDeleteMessagesTo(persistenceId: String, toSequenceNr: Long): Future[Unit] = {
     val pId = PersistId(persistenceId)
     for {
       sNrs <- riak fetchSequenceNrs (pId, _ <= SeqNr(toSequenceNr))
-      _ <- delete(pId, sNrs, if (permanent) Permanent else Temporary)
+      _ <- delete(pId, sNrs)
     } yield ()
   }
 
-  private def delete(pId: PersistId, sNrs: Seq[SeqNr], mode: DeleteMode) = Future.sequence {
-    sNrs map (sNr => riak delete (pId, sNr, mode))
+  private def delete(pId: PersistId, sNrs: Seq[SeqNr]) = Future.sequence {
+    sNrs map (sNr => riak delete (pId, sNr))
   }
 
   /**
    * asynchronously reads the highest stored sequence number for the
-   * given `persistenceId`.from the riak journal
+   * given `persistenceId` from the riak journal
    */
   override def asyncReadHighestSequenceNr(persistenceId: String, fromSequenceNr: Long): Future[Long] = for {
     seqNrs <- riak fetchSequenceNrs PersistId(persistenceId)
@@ -87,21 +94,4 @@ class RiakAsyncWriteJournal extends AsyncWriteJournal with ActorLogging {
       msg <- replayCallbacks(seqNrs)
     } yield ()
   }
-
-  // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //                                                                                                                  //
-  // DEPRECATED STUFF BEYOND THIS POINT                                                                               //
-  //                                                                                                                  //
-  // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  import akka.persistence.{ PersistentConfirmation, PersistentId }
-
-  @deprecated("writeConfirmations will be removed, since Channels will be removed.", since = "0.1")
-  override def asyncWriteConfirmations(confirmations: Seq[PersistentConfirmation]): Future[Unit] =
-    riak writeConfirmations confirmations
-
-  @deprecated("asyncDeleteMessages will be removed.", since = "0.1")
-  override def asyncDeleteMessages(messageIds: Seq[PersistentId], permanent: Boolean): Future[Unit] = Future.sequence {
-    messageIds.map(mId => { delete(PersistId(mId.persistenceId), Seq(SeqNr(mId.sequenceNr)), if (permanent) Permanent else Temporary) })
-  }.map(_ => ())
 }

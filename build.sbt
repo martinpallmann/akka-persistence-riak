@@ -1,13 +1,13 @@
-import scalariform.formatter.preferences._
 
 organization := "com.github.martinpallmann"
 name := "akka-persistence-riak"
 version := "0.0.0"
-scalaVersion := "2.11.6"
-crossScalaVersions := Seq("2.10.4", "2.11.6")
-val akkaVersion = "2.3.9"
-val riakVersion = "2.0.1"
-val slf4jVersion = "1.7.12"
+scalaVersion := "2.11.7"
+crossScalaVersions := Seq("2.10.4", "2.11.7")
+
+val akkaVersion = "2.4.1"
+val riakVersion = "2.0.2"
+val slf4jVersion = "1.7.13"
 
 libraryDependencies ++= {
   def akka(artifactId: String) = { "com.typesafe.akka" %% s"akka-$artifactId" % akkaVersion }
@@ -15,19 +15,12 @@ libraryDependencies ++= {
   def test(moduleId: ModuleID) = { moduleId % "test" }
   Seq(
     akka("actor"),
-    akka("persistence-experimental"),
+    akka("persistence"),
     riak("client")
   ) ++ (Seq(
     akka("testkit"),
-    akka("persistence-tck-experimental"),
+    akka("persistence-tck"),
     "org.slf4j" % "slf4j-nop" % slf4jVersion
   ) map test)
 }
-scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
-publishMavenStyle := true
-scalariformSettings
-ScalariformKeys.preferences := ScalariformKeys.preferences.value
-  .setPreference(AlignSingleLineCaseStatements, true)
-  .setPreference(DoubleIndentClassDeclaration, true)
-  .setPreference(PreserveDanglingCloseParenthesis, true)
-
+scalacOptions := Seq("-feature", "-unchecked", "-deprecation", "-encoding", "utf8")

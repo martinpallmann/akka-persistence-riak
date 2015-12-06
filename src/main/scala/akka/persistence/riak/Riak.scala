@@ -1,6 +1,6 @@
 package akka.persistence.riak
 
-import akka.persistence.{ PersistentConfirmation, PersistentRepr }
+import akka.persistence.PersistentRepr
 import akka.persistence.riak.client.api.RiakClient.{ SetActions, MapActions }
 import akka.persistence.riak.client.api.RiakClient.SetActions.Add
 import akka.persistence.riak.client.core.{ RiakCluster, RiakNode }
@@ -31,10 +31,8 @@ case class Riak(addresses: List[String], minConnections: Int, maxConnections: In
 
   def shutdown() = cluster.shutdown()
 
-  def delete(pId: PersistId, sNr: SeqNr, m: DeleteMode)(implicit ec: ExecutionContext, bucketType: JournalBucketType): Future[Unit] = m match {
-    case Permanent => client deleteValue Location(pId, sNr)
-    case Temporary => client updateMap (Location(pId, sNr) -> Seq(MapActions.UpdateFlag("deleted", flag = true)))
-  }
+  def delete(pId: PersistId, sNr: SeqNr)(implicit ec: ExecutionContext, bucketType: JournalBucketType): Future[Unit] =
+    client deleteValue Location(pId, sNr)
 
   def storeMessages(messages: Iterable[PersistentRepr])(implicit ec: ExecutionContext, ser: Serialization, bucketType: JournalBucketType): Future[Iterable[(PersistId, SeqNr)]] = Future.sequence {
 
@@ -82,18 +80,6 @@ case class Riak(addresses: List[String], minConnections: Int, maxConnections: In
       }
     }
 
-  @deprecated("writeConfirmations will be removed, since Channels will be removed.", since = "0.1")
-  def writeConfirmations(confirmations: Seq[PersistentConfirmation])(implicit ec: ExecutionContext, bucketType: JournalBucketType): Future[Unit] = Future.sequence {
-    confirmations
-      .groupBy(c => Location(PersistId(c.persistenceId), SeqNr(c.sequenceNr)))
-      .map {
-        case (loc, cs) =>
-          client updateMap loc -> Seq(
-            MapActions.UpdateSet("confirmations", cs.map(c => SetActions.Add(BinaryValue createFromUtf8 c.channelId)))
-          )
-      }
-  }.map(_ => ())
-
   private def serialize(p: PersistentRepr)(implicit ser: Serialization): BinaryValue =
     BinaryValue create ser.serializerFor(classOf[PersistentRepr]).toBinary(p)
 
@@ -103,24 +89,11 @@ case class Riak(addresses: List[String], minConnections: Int, maxConnections: In
       riakMap <- Option(response.getDatatype)
     } yield riakMap
 
-    val payload = for {
+    for {
       d <- data
       reg <- Try(d.getRegister(BinaryValue createFromUtf8 "payload")).toOption
       value <- Option(reg.getValue)
       result <- Option(value.getValue)
     } yield serialization.serializerFor(classOf[PersistentRepr]).fromBinary(result).asInstanceOf[PersistentRepr]
-
-    val del = for {
-      d <- data
-      value <- Try(d.getFlag(BinaryValue createFromUtf8 "deleted")).toOption
-    } yield value.getEnabled
-
-    val confirmations = for {
-      d <- data.toList
-      value <- Try(d.getSet("confirmations")).toOption.toList
-      res <- value.view().asScala.map(_.toStringUtf8).toList
-    } yield res
-
-    payload.map(_.update(deleted = del.getOrElse(false)).update(confirms = confirmations))
   }
 }

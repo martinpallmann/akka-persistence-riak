@@ -5,6 +5,7 @@ import com.typesafe.config.{ ConfigException, Config }
 import scala.collection.IterableLike
 import scala.concurrent.{ ExecutionContext, Promise, Future }
 import scala.util.Try
+import scala.language.implicitConversions
 
 object Implicits {
 

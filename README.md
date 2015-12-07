@@ -1,3 +1,8 @@
+This plugin is under development. The build is still failing. I try to fix this in the next days or so.
+=======================================================================================================
+
+[![Build Status](https://travis-ci.org/martinpallmann/akka-persistence-riak.svg?branch=master)](https://travis-ci.org/martinpallmann/akka-persistence-riak)
+
 Riak Plugin for Akka Persistence
 ================================
 

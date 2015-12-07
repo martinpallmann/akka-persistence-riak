@@ -1,4 +1,3 @@
-sudo: false
 language: scala
 scala:
   - 2.11.7
@@ -7,7 +6,7 @@ jdk:
 services:
   - riak
 before_script:
-  - riak-admin bucket-type create journal '{"props":{"datatype":"map"}}'
-  - riak-admin bucket-type activate journal
-  - riak-admin bucket-type create journal-seqnrs '{"props":{"datatype":"set"}}'
-  - riak-admin bucket-type activate journal-seqnrs
+  - sudo riak-admin bucket-type create journal '{"props":{"datatype":"map"}}'
+  - sudo riak-admin bucket-type activate journal
+  - sudo riak-admin bucket-type create journal-seqnrs '{"props":{"datatype":"set"}}'
+  - sudo riak-admin bucket-type activate journal-seqnrs

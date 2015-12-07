@@ -1,3 +1,6 @@
+sudo: required
+dist: precise
+group: edge
 language: scala
 scala:
   - 2.11.7

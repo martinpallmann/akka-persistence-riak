@@ -10,6 +10,7 @@ import akka.persistence.journal.AsyncWriteJournal
 import akka.persistence.riak._
 import akka.persistence.riak.Implicits._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
 import scala.collection.JavaConverters._
 
@@ -53,7 +54,7 @@ class RiakAsyncWriteJournal extends AsyncWriteJournal with ActorLogging {
     } yield ()
   }
 
-  private def delete(pId: PersistId, sNrs: Seq[SeqNr]) = Future.sequence {
+  private def delete(pId: PersistId, sNrs: Seq[SeqNr]): Future[Seq[Unit]] = Future.sequence {
     sNrs map (sNr => riak delete (pId, sNr))
   }
 

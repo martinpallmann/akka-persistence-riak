@@ -25,14 +25,9 @@ case class Riak(addresses: List[String], minConnections: Int, maxConnections: In
     RiakCluster.Builder(nodes).build
   }
 
-  private lazy val client = Try {
+  private lazy val client = {
     cluster.start()
     RiakClient(cluster)
-  } match {
-    case Success(s) => s
-    case Failure(f) =>
-      f.printStackTrace()
-      throw f
   }
 
   def shutdown() = cluster.shutdown()
@@ -58,7 +53,7 @@ case class Riak(addresses: List[String], minConnections: Int, maxConnections: In
   }
 
   def fetchMessage(pId: PersistId, seqNr: SeqNr)(implicit ec: ExecutionContext, ser: Serialization, bucketType: JournalBucketType): Future[Option[PersistentRepr]] =
-    client fetchMap Location(pId, seqNr) map (resp => deserialize(resp))
+    client fetchMap Location(pId, seqNr) map deserialize
 
   def storeSeqNrs(seqNrs: Iterable[(PersistId, SeqNr)])(implicit ec: ExecutionContext, bucketType: JournalBucketType): Future[Iterable[Response]] = {
 
@@ -104,15 +99,15 @@ case class Riak(addresses: List[String], minConnections: Int, maxConnections: In
       ser.serializerFor(classOf[PersistentRepr]).fromBinary(value).asInstanceOf[PersistentRepr]
     }.toOption
 
-    val data = for {
-      riakMap <- Option(response.getDatatype)
-    } yield riakMap
+    val payload = response.getDatatype.getRegister(BinaryValue createFromUtf8 "payload")
 
-    for {
-      d <- data
-      reg <- Try(d.getRegister(BinaryValue createFromUtf8 "payload")).toOption
-      value <- Option(reg.getValue.getValue)
-      result <- fromBinary(value)
-    } yield result
+    if (payload == null) {
+      None
+    } else {
+      for {
+        value <- Option(payload.getValue.getValue)
+        result <- fromBinary(value)
+      } yield result
+    }
   }
 }

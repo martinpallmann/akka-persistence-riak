@@ -12,6 +12,7 @@ import com.basho.riak.client.core.util.BinaryValue
 
 import scala.collection.immutable.Iterable
 import scala.concurrent.{ ExecutionContext, Future }
+import scala.util.control.NonFatal
 
 object RiakClient {
   def apply(cluster: RiakCluster) = new RiakClient(new JRiakClient(cluster.cluster))

@@ -3,7 +3,6 @@ organization := "com.github.martinpallmann"
 name := "akka-persistence-riak"
 version := "0.0.0"
 scalaVersion := "2.11.7"
-crossScalaVersions := Seq("2.10.4", "2.11.7")
 
 val akkaVersion = "2.4.1"
 val riakVersion = "2.0.2"

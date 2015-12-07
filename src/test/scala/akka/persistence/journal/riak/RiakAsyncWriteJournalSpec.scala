@@ -5,5 +5,5 @@ import akka.persistence.journal.JournalSpec
 import com.typesafe.config.ConfigFactory
 
 class RiakAsyncWriteJournalSpec extends JournalSpec(ConfigFactory.load("RiakAsyncWriteJournalSpec")) {
-  override protected def supportsRejectingNonSerializableObjects: CapabilityFlag = CapabilityFlag.off()
+  override protected def supportsRejectingNonSerializableObjects: CapabilityFlag = CapabilityFlag.on()
 }

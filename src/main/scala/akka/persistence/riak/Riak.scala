@@ -1,6 +1,7 @@
 package akka.persistence.riak
 
 import akka.persistence.PersistentRepr
+import akka.persistence.riak.client.api.RiakClient.MapActions.UpdateRegister
 import akka.persistence.riak.client.api.RiakClient.{ SetActions, MapActions }
 import akka.persistence.riak.client.api.RiakClient.SetActions.Add
 import akka.persistence.riak.client.core.{ RiakCluster, RiakNode }
@@ -13,7 +14,7 @@ import com.basho.riak.client.core.util.BinaryValue
 import scala.collection.immutable.{ Iterable, Seq }
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.collection.JavaConverters._
-import scala.util.Try
+import scala.util.{ Failure, Success, Try }
 
 case class Riak(addresses: List[String], minConnections: Int, maxConnections: Int) {
   private lazy val cluster = {
@@ -24,9 +25,14 @@ case class Riak(addresses: List[String], minConnections: Int, maxConnections: In
     RiakCluster.Builder(nodes).build
   }
 
-  private lazy val client = {
+  private lazy val client = Try {
     cluster.start()
     RiakClient(cluster)
+  } match {
+    case Success(s) => s
+    case Failure(f) =>
+      f.printStackTrace()
+      throw f
   }
 
   def shutdown() = cluster.shutdown()
@@ -34,14 +40,25 @@ case class Riak(addresses: List[String], minConnections: Int, maxConnections: In
   def delete(pId: PersistId, sNr: SeqNr)(implicit ec: ExecutionContext, bucketType: JournalBucketType): Future[Unit] =
     client deleteValue Location(pId, sNr)
 
-  def storeMessages(messages: Iterable[PersistentRepr])(implicit ec: ExecutionContext, ser: Serialization, bucketType: JournalBucketType): Future[Iterable[(PersistId, SeqNr)]] = Future.sequence {
+  def serializeMsgs(messages: Iterable[PersistentRepr])(implicit ser: Serialization): Try[Iterable[(String, Long, BinaryValue)]] = {
+    messages.map(v => (v.persistenceId, v.sequenceNr, serialize(v))).foldLeft(Success(Nil): Try[Seq[(String, Long, BinaryValue)]]) {
+      case (Success(acc), (p, s, Success(elem))) => Success(acc :+ (p, s, elem))
+      case (_, (_, _, Failure(t)))               => Failure(t)
+      case (Failure(t), _)                       => Failure(t)
+    }
+  }
 
-    def toUpdate(msgs: Iterable[PersistentRepr]) = msgs.map(msg => MapActions.UpdateRegister("payload", serialize(msg)))
+  def storeMessages(messages: Iterable[(String, Long, BinaryValue)])(implicit ec: ExecutionContext, ser: Serialization, bucketType: JournalBucketType): Future[Iterable[(PersistId, SeqNr)]] = Future.sequence {
 
-    messages.groupBy(msg => (PersistId(msg.persistenceId), SeqNr(msg.sequenceNr))).map {
+    def toUpdate(msgs: Iterable[(String, Long, BinaryValue)]) = msgs.map(msg => MapActions.UpdateRegister("payload", msg._3))
+
+    messages.groupBy(msg => (PersistId(msg._1), SeqNr(msg._2))).map {
       case ((pId, seqNr), msgs) => client updateMap (Location(pId, seqNr) -> toUpdate(msgs)) map (_ => pId -> seqNr)
     }
   }
+
+  def fetchMessage(pId: PersistId, seqNr: SeqNr)(implicit ec: ExecutionContext, ser: Serialization, bucketType: JournalBucketType): Future[Option[PersistentRepr]] =
+    client fetchMap Location(pId, seqNr) map (resp => deserialize(resp))
 
   def storeSeqNrs(seqNrs: Iterable[(PersistId, SeqNr)])(implicit ec: ExecutionContext, bucketType: JournalBucketType): Future[Iterable[Response]] = {
 
@@ -55,9 +72,6 @@ case class Riak(addresses: List[String], minConnections: Int, maxConnections: In
       } map client.updateSet
     }
   }
-
-  def fetchMessage(pId: PersistId, seqNr: SeqNr)(implicit ec: ExecutionContext, ser: Serialization, bucketType: JournalBucketType): Future[Option[PersistentRepr]] =
-    client fetchMap Location(pId, seqNr) map (resp => deserialize(resp))
 
   def fetchSequenceNrs(pId: PersistId,
     filter: SeqNr => Boolean = alwaysTrue,
@@ -80,10 +94,15 @@ case class Riak(addresses: List[String], minConnections: Int, maxConnections: In
       }
     }
 
-  private def serialize(p: PersistentRepr)(implicit ser: Serialization): BinaryValue =
+  private def serialize(p: PersistentRepr)(implicit ser: Serialization): Try[BinaryValue] = Try {
     BinaryValue create ser.serializerFor(classOf[PersistentRepr]).toBinary(p)
+  }
 
-  private def deserialize(response: FetchMap.Response)(implicit serialization: Serialization): Option[PersistentRepr] = {
+  private def deserialize(response: FetchMap.Response)(implicit ser: Serialization): Option[PersistentRepr] = {
+
+    def fromBinary(value: Array[Byte])(implicit ser: Serialization): Option[PersistentRepr] = Try {
+      ser.serializerFor(classOf[PersistentRepr]).fromBinary(value).asInstanceOf[PersistentRepr]
+    }.toOption
 
     val data = for {
       riakMap <- Option(response.getDatatype)
@@ -92,8 +111,8 @@ case class Riak(addresses: List[String], minConnections: Int, maxConnections: In
     for {
       d <- data
       reg <- Try(d.getRegister(BinaryValue createFromUtf8 "payload")).toOption
-      value <- Option(reg.getValue)
-      result <- Option(value.getValue)
-    } yield serialization.serializerFor(classOf[PersistentRepr]).fromBinary(result).asInstanceOf[PersistentRepr]
+      value <- Option(reg.getValue.getValue)
+      result <- fromBinary(value)
+    } yield result
   }
 }

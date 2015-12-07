@@ -10,9 +10,7 @@ import akka.persistence.journal.AsyncWriteJournal
 import akka.persistence.riak._
 import akka.persistence.riak.Implicits._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{ Success, Try }
-
-// TODO make available on outside
+import scala.util.{ Failure, Success, Try }
 import scala.collection.JavaConverters._
 
 class RiakAsyncWriteJournal extends AsyncWriteJournal with ActorLogging {
@@ -33,15 +31,20 @@ class RiakAsyncWriteJournal extends AsyncWriteJournal with ActorLogging {
     }
 
   // TODO return Try instead of Success
-  def asyncWriteMessage(message: AtomicWrite): Future[Try[Unit]] = for {
-    seqNrs <- riak storeMessages message.payload
-    res <- riak storeSeqNrs seqNrs
-  } yield Success(Unit)
+  def asyncWriteMessage(message: AtomicWrite): Future[Try[Unit]] = {
+    val msgs = riak serializeMsgs message.payload
+    msgs match {
+      case Failure(t) => Future.successful(Failure(t))
+      case Success(res) => for {
+        seqNrs <- riak storeMessages res
+        res <- riak storeSeqNrs seqNrs
+      } yield Success(Unit)
+    }
+  }
 
   /**
    * asynchronously deletes all persistent messages up to `toSequenceNr` (inclusive)
-   * from the riak journal. If `permanent` is set to `false`, the persistent messages are marked
-   * as deleted, otherwise they are permanently deleted.
+   * from the riak journal.
    */
   override def asyncDeleteMessagesTo(persistenceId: String, toSequenceNr: Long): Future[Unit] = {
     val pId = PersistId(persistenceId)
@@ -69,13 +72,6 @@ class RiakAsyncWriteJournal extends AsyncWriteJournal with ActorLogging {
    * when all messages (matching the sequence number bounds) have been replayed.
    * The future must be completed with a failure if any of the persistent messages
    * could not be replayed.
-   *
-   * The `replayCallback` must also be called with messages that have been marked
-   * as deleted. In this case a replayed message's `deleted` method must return
-   * `true`.
-   *
-   * The channel ids of delivery confirmations that are available for a replayed
-   * message must be contained in that message's `confirms` sequence.
    */
   override def asyncReplayMessages(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long, max: Long)(replayCallback: (PersistentRepr) => Unit): Future[Unit] = {
 

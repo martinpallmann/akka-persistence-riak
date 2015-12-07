@@ -11,7 +11,7 @@ Riak Plugin for Akka Persistence
 Dependency
 ----------
 
-This version of `akka-persistence-riak` depends on Riak 2.0 and Akka 2.3.9.
+This version of `akka-persistence-riak` depends on Riak 2.0.1 and Akka 2.4.1.
 
 
 Journal plugin

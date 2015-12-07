@@ -29,8 +29,7 @@ class RiakAsyncWriteJournal extends AsyncWriteJournal with ActorLogging {
     Future.sequence {
       messages.map(asyncWriteMessage)
     }
-
-  // TODO return Try instead of Success
+  
   def asyncWriteMessage(message: AtomicWrite): Future[Try[Unit]] = {
     val msgs = riak serializeMsgs message.payload
     msgs match {

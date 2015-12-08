@@ -11,15 +11,16 @@ val slf4jVersion = "1.7.13"
 libraryDependencies ++= {
   def akka(artifactId: String) = { "com.typesafe.akka" %% s"akka-$artifactId" % akkaVersion }
   def riak(artifactId: String) = { "com.basho.riak"    %  s"riak-$artifactId" % riakVersion }
-  def test(moduleId: ModuleID) = { moduleId % "test" }
+  def slf4j(artifactId: String) = { "org.slf4j"        %  s"slf4j-$artifactId" % slf4jVersion }
+  def testDeps(modules: ModuleID*): Seq[ModuleID] = modules.map(_ % "test")
   Seq(
     akka("actor"),
     akka("persistence"),
     riak("client")
-  ) ++ (Seq(
+  ) ++ testDeps(
     akka("testkit"),
     akka("persistence-tck"),
-    "org.slf4j" % "slf4j-nop" % slf4jVersion
-  ) map test)
+    slf4j("nop")
+  )
 }
 scalacOptions := Seq("-feature", "-unchecked", "-deprecation", "-encoding", "utf8")
